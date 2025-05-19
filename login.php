@@ -1,7 +1,5 @@
 <?php
-session_start(); 
-
-// Mostrar errores en desarrollo
+session_start();
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -11,44 +9,50 @@ $usuario = "root";
 $contraseña = "";
 $bd = "aledrapilates_bd";
 
-$conn = new mysqli("127.0.0.1", "root", "", "aledrapilates_bd", 3306);
+$conn = new mysqli($host, $usuario, $contraseña, $bd, 3306);
 
-// Verifica la conexión
+// Verificar conexión
 if ($conn->connect_error) {
     die("Conexión fallida: " . $conn->connect_error);
 }
 
-// Obtener datos del formulario
-$correo = $_POST['email'] ?? '';
-$password = $_POST['password'] ?? '';
-
-
-// Validación básica
-if (empty($correo) || empty($password)) {
+// Verificar si se enviaron datos
+if (!isset($_POST['email']) || !isset($_POST['password'])) {
     die("Por favor completa todos los campos.");
 }
 
-// Buscar el usuario en la base de datos
-$sql = "SELECT id, nombre, contrasena FROM Usuario WHERE email = ?";
+$email = $_POST['email'];
+$password = $_POST['password'];
+
+// Buscar el usuario
+$sql = "SELECT * FROM Usuario WHERE email = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $correo);
+$stmt->bind_param("s", $email);
 $stmt->execute();
 $resultado = $stmt->get_result();
 
 if ($resultado->num_rows === 1) {
     $usuario = $resultado->fetch_assoc();
 
-    // Verificar contraseña
     if (password_verify($password, $usuario['contrasena'])) {
-        echo "<h2>¡Inicio de sesión exitoso, bienvenido " . htmlspecialchars($usuario['nombre']) . "!</h2>";
-        // Aquí podrías guardar info en sesión
-        // $_SESSION['usuario_id'] = $usuario['id'];
-        // header("Location: dashboard.php");
+        // Iniciar sesión
+        $_SESSION['usuario_id'] = $usuario['id'];
+        $_SESSION['nombre'] = $usuario['nombre'];
+        $_SESSION['rol'] = $usuario['rol'];
+
+        // Redirigir según el rol
+        if ($usuario['rol'] === 'administrador') {
+            header("Location: admin_dashboard.php");
+        } else {
+            header("Location: bienvenida2.php");
+        }
+        exit;
+        
     } else {
         echo "Contraseña incorrecta.";
     }
 } else {
-    echo "No se encontró una cuenta con ese correo.";
+    echo "Correo no registrado.";
 }
 
 $stmt->close();

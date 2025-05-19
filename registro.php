@@ -1,42 +1,49 @@
 <?php
-
-
 ini_set('display_errors', 1);
-
 error_reporting(E_ALL);
-// Datos de conexión
-$host = "lo127.0.0.1";
+
+// Conexión a base de datos
+$host = "127.0.0.1";
 $usuario = "root";
-$contraseña = ""; 
-$bd = "aledrapilates_bd"; 
+$contraseña = "";
+$bd = "aledrapilates_bd";
 
-// Crear conexión
-$conn = new mysqli("127.0.0.1", "root", "", "aledrapilates_bd", 3306);
-
-
-
-// Verificar conexión
+$conn = new mysqli($host, $usuario, $contraseña, $bd, 3306);
 if ($conn->connect_error) {
     die("Conexión fallida: " . $conn->connect_error);
 }
 
-// Obtener datos del formulario
-$nombre = $_POST['nombre'];
-$correo = $_POST['correo'];
-$password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-var_dump($_POST);  // Encriptar contraseña
+$mensaje = "";
+$exito = false;
 
-// Insertar datos
-$sql = "INSERT INTO Usuario (nombre, email, contrasena) VALUES (?, ?, ?)";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("sss", $nombre, $correo, $password);
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $nombre = $_POST['nombre'] ?? '';
+    $correo = $_POST['correo'] ?? '';
+    $passwordPlano = $_POST['password'] ?? '';
 
-if ($stmt->execute()) {
-    echo "¡Registro exitoso! Serás redirigido al login...";
-    header("refresh:2;url=login.html"); 
-    exit;
+    // Validación del nombre
+    if (!preg_match("/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/", $nombre)) {
+        $mensaje = "❌ El nombre solo puede contener letras y espacios.";
+    } else {
+        $password = password_hash($passwordPlano, PASSWORD_DEFAULT);
+        $sql = "INSERT INTO Usuario (nombre, email, contrasena) VALUES (?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+
+        if ($stmt) {
+            $stmt->bind_param("sss", $nombre, $correo, $password);
+            if ($stmt->execute()) {
+                $mensaje = "✅ ¡Registro exitoso! Serás redirigido al login...";
+                $exito = true;
+                header("refresh:2;url=login.html");
+            } else {
+                $mensaje = "❌ Error al registrar: " . $stmt->error;
+            }
+            $stmt->close();
+        } else {
+            $mensaje = "❌ Error en la preparación de la consulta.";
+        }
+    }
 }
 
-$stmt->close();
 $conn->close();
 ?>
